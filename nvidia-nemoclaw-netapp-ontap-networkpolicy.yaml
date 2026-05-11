@@ -1,0 +1,48 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: nemoclaw-netapp-ontap-access
+  namespace: nvidia-nemoclaw
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: nemoclaw
+  policyTypes:
+    - Egress
+  egress:
+    # Allow DNS lookups for FQDN-based ONTAP management endpoints.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+    # Permit ONTAP API/management traffic for monitoring and configuration changes.
+    # Replace ipBlock.cidr (and except) with your ONTAP management LIF/CIDR ranges.
+    - to:
+        - ipBlock:
+            cidr: 10.20.30.0/24
+            except:
+              - 10.20.30.128/25
+      ports:
+        # HTTPS API (REST/ZAPI over TLS)
+        - protocol: TCP
+          port: 443
+        # HTTP API (legacy, only if explicitly required)
+        - protocol: TCP
+          port: 80
+        # SSH CLI automation (optional, for scripted config workflows)
+        - protocol: TCP
+          port: 22
+        # SNMP polling/traps (optional, monitoring only)
+        - protocol: UDP
+          port: 161
+        - protocol: UDP
+          port: 162
